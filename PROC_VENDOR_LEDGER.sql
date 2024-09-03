@@ -17,159 +17,125 @@ BEGIN
     
     -- =========== Beginning Balance ===========
     
-	SELECT CASE
-				WHEN ENTRY_DATE IS NOT NULL THEN SUM(BALANCE)
-				ELSE IFNULL(SUM(DEBIT), 0) - IFNULL(SUM(CREDIT), 0)
-		   END AS BALANCE INTO BEGININGBALANCE
-	  FROM (SELECT VENDOR_ID,
-				   ENTRY_DATE,
-				   PAYPAL_TRANSACTION_ID,
-				   FLAG,
-				   FORM,
-				   DEBIT,
-				   CREDIT,
-				   FINAL AS BALANCE
-				   -- SUM(FINAL) OVER (PARTITION BY VENDOR_ID ORDER BY VENDOR_ID, ENTRY_DATE, PAYPAL_TRANSACTION_ID, FLAG, FORM, DEBIT, CREDIT, FINAL) AS BALANCE
-			  FROM ( SELECT B.VENDOR_ID, 
-							A.VCM_ENTRY_DATE AS ENTRY_DATE, 
-							A.PAYPAL_TRANSACTION_ID, 
-							'V' AS FLAG, 
-							'Vendor Credit Memo' AS FORM,
+			SELECT 
+	               IFNULL(SUM(DEBIT),0) - IFNULL(SUM(CREDIT),0) INTO BEGININGBALANCE
+
+			  FROM ( SELECT A.VENDOR_ID, 
 							SUM(A.VCM_TOTAL) AS DEBIT,
 							NULL AS CREDIT,
-							SUM(A.VCM_TOTAL) AS FINAL
-					   FROM VENDOR_CREDIT_MEMO A,
-							VENDOR B
-					  WHERE A.VENDOR_ID = B.ID
-						AND  CASE
+							SUM(A.VCM_TOTAL) AS FINAL,
+							'V' AS FLAG
+					   FROM VENDOR_CREDIT_MEMO A
+					  WHERE 
+							CASE
 							   WHEN P_ENTRY_DATE_FROM <> "" THEN A.VCM_ENTRY_DATE < P_ENTRY_DATE_FROM
 							   ELSE TRUE
 							END
 						AND CASE
-							   WHEN P_VENDOR_ID <> "" THEN B.ID = P_VENDOR_ID
+							   WHEN P_VENDOR_ID <> "" THEN A.VENDOR_ID = P_VENDOR_ID
 							   ELSE TRUE
 							END
 						AND CASE
 							   WHEN P_COMPANY_ID <> "" THEN A.COMPANY_ID = P_COMPANY_ID
 							   ELSE TRUE
 							END
-				   GROUP BY B.VENDOR_ID, A.VCM_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+				   GROUP BY A.VENDOR_ID
 						 
 					 UNION ALL 
 				   
-					 SELECT B.VENDOR_ID, 
-							A.RECEIVE_ENTRY_DATE AS ENTRY_DATE, 
-							A.PAYPAL_TRANSACTION_ID AS PAYPAL_TRANSACTION_ID, 
-							'R' AS FLAG, 
-							'Receive Order' AS FORM,
+					 SELECT A.VENDOR_ID, 
 							NULL AS DEBIT,
 							SUM(A.RECEIVE_TOTAL_AMOUNT ) AS CREDIT,
-							SUM(A.RECEIVE_TOTAL_AMOUNT *-1) AS FINAL
-					   FROM RECEIVE_ORDER A,
-							VENDOR B
-					  WHERE A.VENDOR_ID = B.ID
-						AND  CASE
+							SUM(A.RECEIVE_TOTAL_AMOUNT *-1) AS FINAL,
+							'R' AS FLAG
+					   FROM RECEIVE_ORDER A
+					  WHERE 
+							CASE
 							   WHEN P_ENTRY_DATE_FROM <> "" THEN A.RECEIVE_ENTRY_DATE < P_ENTRY_DATE_FROM
 							   ELSE TRUE
 							END
 						AND CASE
-							   WHEN P_VENDOR_ID <> "" THEN B.ID = P_VENDOR_ID
+							   WHEN P_VENDOR_ID <> "" THEN A.VENDOR_ID = P_VENDOR_ID
 							   ELSE TRUE
 							END
 						AND CASE
 							   WHEN P_COMPANY_ID <> "" THEN A.COMPANY_ID = P_COMPANY_ID
 							   ELSE TRUE
 							END
-				   GROUP BY B.VENDOR_ID, A.RECEIVE_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+				   GROUP BY A.VENDOR_ID
 						  
 					 UNION ALL
 					
-					 SELECT B.VENDOR_ID, 
-							A.PS_ENTRY_DATE AS ENTRY_DATE, 
-							A.PAYPAL_TRANSACTION_ID, 
-							'P' AS FLAG,
-							'Payment Sent' AS FORM,
+					 SELECT A.VENDOR_ID, 
 							SUM(A.AMOUNT) AS DEBIT,
 							NULL AS CREDIT,
-							SUM(A.AMOUNT) AS FINAL
-					   FROM PAYMENT_SENT A,
-							VENDOR B
-					  WHERE A.VENDOR_ID = B.ID
-						AND CASE
+							SUM(A.AMOUNT) AS FINAL,
+							'P' AS FLAG
+					   FROM PAYMENT_SENT A
+					  WHERE 
+							CASE
 							   WHEN P_ENTRY_DATE_FROM <> "" THEN A.PS_ENTRY_DATE < P_ENTRY_DATE_FROM
 							   ELSE TRUE
 							END
 						AND CASE
-							   WHEN P_VENDOR_ID <> "" THEN B.ID = P_VENDOR_ID
+							   WHEN P_VENDOR_ID <> "" THEN A.VENDOR_ID = P_VENDOR_ID
 							   ELSE TRUE
 							END
 						AND CASE
 							   WHEN P_COMPANY_ID <> "" THEN A.COMPANY_ID = P_COMPANY_ID
 							   ELSE TRUE
 							END
-				   GROUP BY B.VENDOR_ID, A.PS_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+				   GROUP BY A.VENDOR_ID
 						  
 					 UNION ALL 
 					
-					 SELECT B.VENDOR_ID, 
-							A.PC_ENTRY_DATE AS ENTRY_DATE, 
-							A.PAYPAL_TRANSACTION_ID, 
-							'C' AS FLAG, 
-							'Partial Credit' AS FORM,
+					 SELECT A.VENDOR_ID, 
 							SUM(A.TOTAL_AMOUNT) AS DEBIT,
 							NULL AS CREDIT,
-							SUM(A.TOTAL_AMOUNT * -1) AS FINAL
-					   FROM PARTIAL_CREDIT A,
-							VENDOR B
-					  WHERE A.VENDOR_ID = B.ID
-						AND CASE
+							SUM(A.TOTAL_AMOUNT) AS FINAL,
+							'C' AS FLAG
+					   FROM PARTIAL_CREDIT A
+					  WHERE 
+							CASE
 							   WHEN P_ENTRY_DATE_FROM <> "" THEN A.PC_ENTRY_DATE < P_ENTRY_DATE_FROM
 							   ELSE TRUE
 							END
 						AND CASE
-							   WHEN P_VENDOR_ID <> "" THEN B.ID = P_VENDOR_ID
+							   WHEN P_VENDOR_ID <> "" THEN A.VENDOR_ID = P_VENDOR_ID
 							   ELSE TRUE
 							END
 						AND CASE
 							   WHEN P_COMPANY_ID <> "" THEN A.COMPANY_ID = P_COMPANY_ID
 							   ELSE TRUE
 							END
-				   GROUP BY B.VENDOR_ID, A.PC_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+				   GROUP BY A.VENDOR_ID
 				   
 					 UNION ALL
 
-					 SELECT B.VENDOR_ID, 
-							A.RM_ENTRY_DATE AS ENTRY_DATE, 
-							A.PAYPAL_TRANSACTION_ID, 
-							'M' AS FLAG, 
-							'Receive Money' AS FORM,
+					 SELECT A.VENDOR_ID, 
 							NULL AS DEBIT,
 							SUM(A.AMOUNT ) AS CREDIT,
-							SUM(A.AMOUNT * -1) AS FINAL
-					   FROM RECEIVE_MONEY A,
-							VENDOR B
-					  WHERE A.VENDOR_ID = B.ID
-						AND  CASE
+							SUM(A.AMOUNT * -1) AS FINAL,
+							'M' AS FLAG
+					   FROM RECEIVE_MONEY A
+					  WHERE 
+							CASE
 							   WHEN P_ENTRY_DATE_FROM <> "" THEN A.RM_ENTRY_DATE < P_ENTRY_DATE_FROM
 							   ELSE TRUE
 							END
 						AND CASE
-							   WHEN P_VENDOR_ID <> "" THEN B.ID = P_VENDOR_ID
+							   WHEN P_VENDOR_ID <> "" THEN A.VENDOR_ID = P_VENDOR_ID
 							   ELSE TRUE
 							END
 						AND CASE
 							   WHEN P_COMPANY_ID <> "" THEN A.COMPANY_ID = P_COMPANY_ID
 							   ELSE TRUE
 							END
-				   GROUP BY B.VENDOR_ID, A.RM_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID
+				   GROUP BY A.VENDOR_ID
 				   
 					 UNION ALL
 				   
-					 SELECT B.VENDOR_ID, 
-							A.PAY_ENTRY_DATE AS ENTRY_DATE, 
-							A.PAY_REFERENCE, 
-							'O' AS FLAG, 
-							'Vendor Payment' AS FORM,
+					 SELECT A.VENDOR_ID, 
 							CASE 
 								WHEN A.REMAINING_AMOUNT > 0 THEN SUM(ABS(A.REMAINING_AMOUNT)) 
 								ELSE NULL 
@@ -181,58 +147,54 @@ BEGIN
 							CASE 
 								WHEN A.REMAINING_AMOUNT > 0 THEN SUM(ABS(A.REMAINING_AMOUNT)) 
 								ELSE SUM(ABS(A.REMAINING_AMOUNT) * -1)
-							END AS FINAL
-					   FROM PAYMENTS A,
-							VENDOR B
-					  WHERE A.VENDOR_ID = B.ID
-						AND A.REMAINING_AMOUNT <> 0
+							END AS FINAL,
+							'O' AS FLAG
+					   FROM PAYMENTS A
+					  WHERE 
+							A.REMAINING_AMOUNT <> 0
 						AND  CASE
 							   WHEN P_ENTRY_DATE_FROM <> "" THEN A.PAY_ENTRY_DATE < P_ENTRY_DATE_FROM
 							   ELSE TRUE
 							END
 						AND CASE
-							   WHEN P_VENDOR_ID <> "" THEN B.ID = P_VENDOR_ID
+							   WHEN P_VENDOR_ID <> "" THEN A.VENDOR_ID = P_VENDOR_ID
 							   ELSE TRUE
 							END
 						AND CASE
 							   WHEN P_COMPANY_ID <> "" THEN A.COMPANY_ID = P_COMPANY_ID
 							   ELSE TRUE
 							END
-				   GROUP BY B.VENDOR_ID, A.PAY_ENTRY_DATE, A.PAY_REFERENCE
+				   GROUP BY A.VENDOR_ID, A.REMAINING_AMOUNT
 				   
 					 UNION ALL 
 				   
-					 SELECT B.VENDOR_ID, 
-							A.SN_ENTRY_DATE AS ENTRY_DATE, 
-							A.SN_ID AS PAYPAL_TRANSACTION_ID, 
-							'N' AS FLAG, 
-							'Stock In' AS FORM,
+					 SELECT A.VENDOR_ID, 
 							NULL AS DEBIT,
 							SUM(A.TOTAL_AMOUNT_IN ) AS CREDIT,
-							SUM(A.TOTAL_AMOUNT_IN *-1) AS FINAL
-					   FROM VW_STOCK_IN A,
-							VENDOR B
-					  WHERE A.VENDOR_ID = B.ID
-						AND  CASE
+							SUM(A.TOTAL_AMOUNT_IN *-1) AS FINAL,
+							'N' AS FLAG
+					   FROM VW_STOCK_IN A
+					  WHERE 
+						    CASE
 							   WHEN P_ENTRY_DATE_FROM <> "" THEN A.SN_ENTRY_DATE < P_ENTRY_DATE_FROM
 							   ELSE TRUE
 							END
 						AND CASE
-							   WHEN P_VENDOR_ID <> "" THEN B.ID = P_VENDOR_ID
+							   WHEN P_VENDOR_ID <> "" THEN A.VENDOR_ID = P_VENDOR_ID
 							   ELSE TRUE
 							END
 						AND CASE
 							   WHEN P_COMPANY_ID <> "" THEN A.COMPANY_ID = P_COMPANY_ID
 							   ELSE TRUE
 							END
-				   GROUP BY B.VENDOR_ID, A.SN_ENTRY_DATE, A.SN_ID
-				   ) C
+				   GROUP BY A.VENDOR_ID
+				   )C
 			 WHERE CASE
 					  WHEN P_FORM_TYPE <> "-1" THEN FLAG IN (P_FORM_TYPE)
 					  ELSE TRUE
 				   END
-		   ) Z
-  GROUP BY VENDOR_ID;
+				   group by C.VENDOR_ID;
+		   
      
 	-- =========== Beginning Balance ===========
 	
@@ -269,14 +231,13 @@ BEGIN
 											    ''Beginning Balance'' AS FORM,
 											    NULL AS DEBIT,
 											    NULL AS CREDIT,
-											    (SUM(TOTAL_AMOUNT) + IFNULL((\'',BEGININGBALANCE,'\'), 0)) AS FINAL
+											    IFNULL(TOTAL_AMOUNT,0) + IFNULL((\'',BEGININGBALANCE,'\'), 0) AS FINAL
 										   FROM VENDOR 
 										  WHERE CASE
 												   WHEN \'',P_VENDOR_ID,'\' <> "" THEN ID = \'',P_VENDOR_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY VENDOR_ID, ENTRY_DATE,id
-											 
+									   	 
 									     UNION ALL 
                                   
                                          SELECT A.ID as FORM_ID,
@@ -285,9 +246,9 @@ BEGIN
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''V'' AS FLAG, 
 											    ''Vendor Credit Memo'' AS FORM,
-											    SUM(A.VCM_TOTAL) AS DEBIT,
+											    IFNULL(A.VCM_TOTAL,0) AS DEBIT,
 											    NULL AS CREDIT,
-											    SUM(A.VCM_TOTAL) AS FINAL
+											    IFNULL(A.VCM_TOTAL,0) AS FINAL
 										   FROM VENDOR_CREDIT_MEMO A,
 											    VENDOR B
 										  WHERE A.VENDOR_ID = B.ID
@@ -307,7 +268,7 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.VENDOR_ID, A.VCM_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.id
+									   
 											 
 									     UNION ALL 
 									   
@@ -318,8 +279,8 @@ BEGIN
 											    ''R'' AS FLAG, 
 											    ''Receive Order'' AS FORM,
 												NULL AS DEBIT,
-											    SUM(A.RECEIVE_TOTAL_AMOUNT) AS CREDIT,
-											    SUM(A.RECEIVE_TOTAL_AMOUNT * -1) AS FINAL
+											    IFNULL(A.RECEIVE_TOTAL_AMOUNT,0) AS CREDIT,
+											    IFNULL(A.RECEIVE_TOTAL_AMOUNT,0) * -1 AS FINAL
 										   FROM RECEIVE_ORDER A,
 											    VENDOR B
 										  WHERE A.VENDOR_ID = B.ID
@@ -339,7 +300,7 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.VENDOR_ID, A.RECEIVE_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.id
+									   
 											  
 									     UNION ALL
 										
@@ -349,9 +310,9 @@ BEGIN
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''P'' AS FLAG,
 											    ''Payment Sent'' AS FORM,
-											    SUM(A.AMOUNT) AS DEBIT,
+											    IFNULL(A.AMOUNT,0) AS DEBIT,
 											    NULL AS CREDIT,
-											    SUM(A.AMOUNT) AS FINAL
+											    IFNULL(A.AMOUNT,0) AS FINAL
 										   FROM PAYMENT_SENT A,
 										  	    VENDOR B
 										  WHERE A.VENDOR_ID = B.ID
@@ -371,7 +332,7 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.VENDOR_ID, A.PS_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.id
+									   
 											  
 									     UNION ALL 
 										
@@ -381,9 +342,9 @@ BEGIN
 											    A.PAYPAL_TRANSACTION_ID, 
 											    ''C'' AS FLAG, 
 											    ''Partial Credit'' AS FORM,
-												SUM(A.TOTAL_AMOUNT) AS DEBIT,
+												IFNULL(A.TOTAL_AMOUNT,0) AS DEBIT,
 											    NULL AS CREDIT,
-											    SUM(A.TOTAL_AMOUNT * -1) AS FINAL
+											    IFNULL(A.TOTAL_AMOUNT,0) AS FINAL
 										   FROM PARTIAL_CREDIT A,
 											    VENDOR B
 										  WHERE A.VENDOR_ID = B.ID
@@ -403,7 +364,7 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.VENDOR_ID, A.PC_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.id
+									   
                                        
 									     UNION ALL
 
@@ -414,8 +375,8 @@ BEGIN
 											    ''M'' AS FLAG, 
 											    ''Receive Money'' AS FORM,
 											    NULL AS DEBIT,
-											    SUM(A.AMOUNT ) AS CREDIT,
-											    SUM(A.AMOUNT * -1) AS FINAL
+											    IFNULL(A.AMOUNT,0) AS CREDIT,
+											    IFNULL(A.AMOUNT,0) * -1 AS FINAL
 										   FROM RECEIVE_MONEY A,
 											    VENDOR B
 										  WHERE A.VENDOR_ID = B.ID
@@ -435,7 +396,7 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.VENDOR_ID, A.RM_ENTRY_DATE, A.PAYPAL_TRANSACTION_ID,A.id
+									   
                                        
                                          UNION ALL
                                        
@@ -446,16 +407,16 @@ BEGIN
 											    ''O'' AS FLAG, 
 											    ''Vendor Payment'' AS FORM,
 												CASE 
-													WHEN A.REMAINING_AMOUNT > 0 THEN SUM(ABS(A.REMAINING_AMOUNT)) 
+													WHEN A.REMAINING_AMOUNT > 0 THEN ABS(IFNULL(A.REMAINING_AMOUNT,0)) 
 													ELSE NULL 
                                                 END AS DEBIT,
 												CASE 
-													WHEN A.REMAINING_AMOUNT < 0 THEN SUM(ABS(A.REMAINING_AMOUNT)) 
+													WHEN A.REMAINING_AMOUNT < 0 THEN ABS(IFNULL(A.REMAINING_AMOUNT,0)) 
 													ELSE NULL  
                                                 END AS CREDIT,
 												CASE 
-													WHEN A.REMAINING_AMOUNT > 0 THEN SUM(ABS(A.REMAINING_AMOUNT)) 
-													ELSE SUM(ABS(A.REMAINING_AMOUNT) * -1)
+													WHEN A.REMAINING_AMOUNT > 0 THEN ABS(IFNULL(A.REMAINING_AMOUNT,0)) 
+													ELSE ABS(IFNULL(A.REMAINING_AMOUNT,0)) * -1
                                                 END AS FINAL
 										   FROM PAYMENTS A,
 											    VENDOR B
@@ -477,7 +438,6 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.VENDOR_ID, A.PAY_ENTRY_DATE, A.PAY_REFERENCE,A.id
                                        
                                          UNION ALL 
 									   
@@ -488,8 +448,8 @@ BEGIN
 											    ''N'' AS FLAG, 
 											    ''Stock In'' AS FORM,
 												NULL AS DEBIT,
-											    SUM(A.TOTAL_AMOUNT_IN ) AS CREDIT,
-											    SUM(A.TOTAL_AMOUNT_IN *-1) AS FINAL
+											    IFNULL(A.TOTAL_AMOUNT_IN,0) AS CREDIT,
+											    IFNULL(A.TOTAL_AMOUNT_IN,0) *-1 AS FINAL
 										   FROM VW_STOCK_IN A,
 											    VENDOR B
 										  WHERE A.VENDOR_ID = B.ID
@@ -509,7 +469,7 @@ BEGIN
 												   WHEN \'',P_COMPANY_ID,'\' <> "" THEN A.COMPANY_ID = \'',P_COMPANY_ID,'\'
 												   ELSE TRUE
 											    END
-									   GROUP BY B.VENDOR_ID, A.SN_ENTRY_DATE, A.SN_ID,A.id
+									   
 									   ) C
 							     WHERE CASE
 										  WHEN \'',P_FORM_TYPE,'\' <> "-1" THEN FLAG IN (',P_FORM_TYPE,')
