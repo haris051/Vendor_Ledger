@@ -211,7 +211,7 @@ BEGIN
 								  Round(cast(SUM(CREDIT) as Decimal(22,2)),2)
 							  AS CREDIT,
 							  Round(cast(SUM(FINAL)as Decimal(22,2)),2) AS BALANCE,
-                              ',BEGININGBALANCE,' as BEG_BAL,
+                              Round(cast(',BEGININGBALANCE,' as Decimal(22,2)),2) as BEG_BAL,
 							  COUNT(*) OVER() AS TOTAL_ROWS
 					     FROM (
                       SELECT 		   FORM_ID,
